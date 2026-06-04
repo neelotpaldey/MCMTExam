@@ -24,16 +24,21 @@ if "user" not in st.session_state:
 # Login Function
 def login(username, password, role):
 
-    result = (
-        supabase.table("login_master")
-        .select("*")
-        .eq("username", username)
-        .eq("password", password)
-        .eq("role", role.lower())
-        .execute()
-    )
+    try:
+        result = (
+            supabase.table("users")
+            .select("*")
+            .eq("username", username)
+            .eq("password", password)
+            .eq("role", role.lower())
+            .execute()
+        )
 
-    return result.data
+        return result.data
+
+    except Exception as e:
+        st.error(str(e))
+        return []
 
 
 # Logout Function
@@ -46,9 +51,9 @@ def logout():
 # LOGIN PAGE
 if not st.session_state.logged_in:
 
-    col1, col2, col3 = st.columns([1, 2, 1])
+    c1, c2, c3 = st.columns([1, 2, 1])
 
-    with col2:
+    with c2:
 
         st.title("🎓 Student Management System")
 
@@ -63,7 +68,7 @@ if not st.session_state.logged_in:
         )
 
         password = st.text_input(
-            "Password / DOB",
+            "Password",
             type="password"
         )
 
@@ -78,7 +83,7 @@ if not st.session_state.logged_in:
                 role
             )
 
-            if data:
+            if len(data) > 0:
 
                 st.session_state.logged_in = True
                 st.session_state.user = data[0]
@@ -86,7 +91,10 @@ if not st.session_state.logged_in:
                 st.rerun()
 
             else:
-                st.error("Invalid Login Credentials")
+
+                st.error(
+                    "Invalid Username, Password or Role"
+                )
 
 # DASHBOARD
 else:
@@ -114,37 +122,43 @@ else:
         if menu == "Dashboard":
 
             try:
+
                 students = (
                     supabase.table("students")
                     .select("*")
                     .execute()
                 )
 
-                total_students = len(students.data)
+                total_students = len(
+                    students.data
+                )
 
             except:
+
                 total_students = 0
 
-            c1, c2, c3 = st.columns(3)
+            col1, col2, col3 = st.columns(3)
 
-            c1.metric(
-                "Total Students",
+            col1.metric(
+                "Students",
                 total_students
             )
 
-            c2.metric(
+            col2.metric(
                 "Admins",
                 1
             )
 
-            c3.metric(
+            col3.metric(
                 "Status",
                 "Active"
             )
 
         elif menu == "Students":
 
-            st.subheader("Students")
+            st.subheader(
+                "All Students"
+            )
 
             try:
 
@@ -168,30 +182,38 @@ else:
 
         st.title("🎓 Student Dashboard")
 
-        menu = st.sidebar.selectbox(
-            "Select",
-            [
-                "Profile"
-            ]
+        st.subheader(
+            "Student Information"
         )
 
-        if menu == "Profile":
+        st.write(user)
 
-            st.subheader("My Profile")
+        enrollment = user.get(
+            "enrollment_no",
+            ""
+        )
 
-            st.write(
-                "### Name:",
-                user.get("student_name", "")
-            )
+        if enrollment != "":
 
-            st.write(
-                "### Enrollment No:",
-                user.get("enrollment_no", "")
-            )
+            try:
 
-            st.write(
-                "### Username:",
-                user.get("username", "")
-            )
+                student_data = (
+                    supabase.table("students")
+                    .select("*")
+                    .eq(
+                        "enrollment_no",
+                        enrollment
+                    )
+                    .execute()
+                )
 
-            st.json(user)
+                if len(student_data.data) > 0:
+
+                    st.dataframe(
+                        student_data.data,
+                        use_container_width=True
+                    )
+
+            except Exception as e:
+
+                st.error(str(e))
